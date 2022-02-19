@@ -24,10 +24,10 @@
 
 static const uint8_t LED_PIN = 2;
 
-const int TOUCH_PIN_COUNT = 10;
-const uint8_t TOUCH_PINS[] = {T0, T1, T2, T3, T4, T5, T6, T7, T8, T9};
+const int TOUCH_PIN_COUNT = 8;
+const uint8_t TOUCH_PINS[] = {T0/*, T1, T2*/, T3, T4, T5, T6, T7, T8, T9};
 
-uint16_t touch_values[TOUCH_PIN_COUNT] = {100};
+uint16_t touch_values[TOUCH_PIN_COUNT] = {0};
 
 // You can have up to 4 on one i2c bus but one is enough for testing!
 //Adafruit_MPR121 cap = Adafruit_MPR121();
@@ -198,25 +198,79 @@ void setup() {
     pinMode(LED_PIN, OUTPUT);
     digitalWrite(LED_PIN, LOW);
 
+//    touch_pad_set_voltage()
+
+    touch_high_volt_t high;
+    touch_low_volt_t low;
+    touch_volt_atten_t attn;
+    touch_pad_get_voltage(&high, &low, &attn);
+    uint16_t sleep_cycle;
+    uint16_t meas_cycle;
+
+    Serial.printf("voltage high: %d voltage low: %d voltage attn: %d\n", high, low, attn);
+
+    touch_pad_get_meas_time(&sleep_cycle, &meas_cycle);
+    Serial.printf("sleep time: %d meas cycle: %d\n", sleep_cycle, meas_cycle);
+
+    touch_cnt_slope_t slope;
+    touch_tie_opt_t tie;
+    touch_pad_get_cnt_mode(static_cast<touch_pad_t>(0), &slope, &tie);
+
+    Serial.printf("cnt slope: %d tie opt: %d\n", slope, tie);
+
+    touch_pad_set_voltage(TOUCH_HVOLT_MAX, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_0V);
+
+    for (int i = 0; i < 9; ++i)
+    {
+        touch_pad_set_cnt_mode(static_cast<touch_pad_t>(i), TOUCH_PAD_SLOPE_1, TOUCH_PAD_TIE_OPT_LOW);
+    }
+
     for (int i = 0; i < TOUCH_PIN_COUNT; ++i)
     {
         pinMode(TOUCH_PINS[i], INPUT);
     }
+    Serial.println("index, pad, value");
 }
 
+const int readingMax = 10;
+uint16_t touchReadings[readingMax][TOUCH_PIN_COUNT] = {0};
+int readingTotal = 0;
+int readingIndex = 0;
 
 void loop() {
 //    mqtt.loop();
 //    ArduinoOTA.handle();
 
+    if (readingTotal < readingMax)
+    {
+        readingTotal += 1;
+    }
+
     for (int i = 0; i < TOUCH_PIN_COUNT; ++i)
     {
-        int read = touchRead(TOUCH_PINS[i]);
+        uint16_t read = touchRead(TOUCH_PINS[i]);
 
-
-
-        touch_values[i] = read;
+//        touchReadings[readingIndex%readingTotal][i] = read;
+        Serial.printf("%d, %d, %d\n", readingIndex, i, read);
     }
+
+    readingIndex += 1;
+
+//    for (int i = 0; i < TOUCH_PIN_COUNT; ++i)
+//    {
+//        float total = 0;
+//        for(int j = 0; j < readingTotal; ++j)
+//        {
+//            total += touchReadings[j][i];
+//        }
+////        Serial.printf("pad: %d value: %f\n", i, total/readingTotal);
+//        if (touchReadings[(readingIndex+readingTotal-1)%readingTotal][i] < .90*total/readingTotal)
+//        {
+//            blink(LED_PIN, 2, true);
+//        }
+//    }
+
+//    delay(500);
 
 //    inputKeyboard_t a{};
 //    a.Key[i%6] = 0x02 + i;
